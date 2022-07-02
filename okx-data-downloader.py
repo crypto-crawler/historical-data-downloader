@@ -3,21 +3,11 @@ import os
 import sys
 import time
 import zipfile
-from calendar import monthrange
 from typing import List
 
 import requests
 
 logging.basicConfig(level=logging.INFO)
-
-
-def number_of_days_in_month(month: str = "2022-06"):
-    """Get number of days in a month."""
-    arr = month.split("-")
-    assert len(arr) == 2
-    year = int(arr[0])
-    month_int = int(arr[1])
-    return monthrange(year, month_int)[1]
 
 
 def validate_zip_file(zip_file: str) -> bool:
@@ -33,6 +23,7 @@ def download(url: str, output_file: str) -> bool:
     if os.path.exists(output_file) and validate_zip_file(output_file):
         logging.info(f"Skipped {url}")
         return True
+    logging.info(f"Downloading {url}")
     resp = requests.get(url, stream=True)
     with open(output_file, "wb") as f_out:
         for chunk in resp.iter_content(chunk_size=4096):
@@ -66,20 +57,15 @@ def okx_download(msg_type: str, month: str, output_dir: str) -> bool:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3 and len(sys.argv) != 4:
-        print(
-            "Usage: okx-data-downloader.py <yyyy-MM> <output_dir> [aggtrades|swaprate|trades]"
-        )
+    if len(sys.argv) != 3:
+        print("Usage: okx-data-downloader.py <yyyy-MM> <output_dir>")
         sys.exit(1)
+
     month = sys.argv[1]
-    num_days = number_of_days_in_month(month)
+    output_dir = os.path.join(sys.argv[2])
+    msg_types = ["trades", "swaprate"]
 
-    if len(sys.argv) == 4:
-        msg_type = sys.argv[3]
-    else:
-        msg_type = "trades"
-
-    output_dir = os.path.join(sys.argv[2], msg_type, month.replace("-", ""))
-    os.makedirs(output_dir, exist_ok=True)
-
-    okx_download(msg_type, month, output_dir)
+    for msg_type in msg_types:
+        msg_type_dir = os.path.join(output_dir, msg_type, month.replace("-", ""))
+        os.makedirs(msg_type_dir, exist_ok=True)
+        okx_download(msg_type, month, msg_type_dir)
